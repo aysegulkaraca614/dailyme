@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#534AB7"/>
+<title>DailyMe – Günlük Asistanım</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --purple: #534AB7;
+    --purple-light: #EEEDFE;
+    --purple-mid: #AFA9EC;
+    --purple-dark: #3C3489;
+    --bg: #F7F7FB;
+    --card: #FFFFFF;
+    --text: #1A1A2E;
+    --text2: #6B6B8A;
+    --border: rgba(83,74,183,0.12);
+    --red: #E24B4A;
+    --green: #3B9E67;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 12px rgba(83,74,183,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 480px; margin: 0 auto; }
+
+  /* AUTH SCREEN */
+  .auth-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .auth-logo { font-size: 48px; margin-bottom: 8px; }
+  .auth-title { font-size: 28px; font-weight: 700; color: var(--purple); margin-bottom: 6px; }
+  .auth-sub { font-size: 14px; color: var(--text2); margin-bottom: 32px; text-align: center; }
+  .auth-card { background: var(--card); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 380px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .auth-tabs { display: flex; margin-bottom: 20px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); }
+  .auth-tab { flex: 1; padding: 10px; text-align: center; font-size: 14px; font-weight: 700; cursor: pointer; background: var(--bg); color: var(--text2); border: none; font-family: 'Nunito', sans-serif; transition: all 0.2s; }
+  .auth-tab.active { background: var(--purple); color: #fff; }
+  .auth-label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .auth-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 14px; font-size: 14px; font-family: 'Nunito', sans-serif; color: var(--text); background: var(--bg); outline: none; margin-bottom: 14px; transition: border-color 0.2s; }
+  .auth-input:focus { border-color: var(--purple); background: #fff; }
+  .auth-btn { width: 100%; padding: 12px; background: var(--purple); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.15s; }
+  .auth-btn:hover { background: var(--purple-dark); }
+  .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .auth-msg { font-size: 13px; text-align: center; margin-top: 12px; padding: 10px; border-radius: var(--radius-sm); display: none; }
+  .auth-msg.error { background: #FDECEA; color: #C0392B; display: block; }
+  .auth-msg.success { background: #DCFCE7; color: #166534; display: block; }
+
+  /* APP */
+  .app-screen { display: none; }
+  .app-screen.visible { display: block; }
+
+  .header { background: var(--purple); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 20; }
+  .header-left h1 { font-size: 20px; font-weight: 700; color: #fff; }
+  .header-left .date { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .user-badge { font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 600; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .logout-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; font-size: 11px; font-weight: 700; font-family: 'Nunito', sans-serif; padding: 5px 10px; border-radius: 20px; cursor: pointer; }
+  .logout-btn:hover { background: rgba(255,255,255,0.3); }
+
+  .tabs { background: var(--purple); display: flex; padding: 0 12px 12px; gap: 6px; }
+  .tab { flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 600; text-align: center; color: rgba(255,255,255,0.6); cursor: pointer; border-radius: 20px; transition: all 0.2s; border: none; background: transparent; font-family: 'Nunito', sans-serif; }
+  .tab.active { background: rgba(255,255,255,0.2); color: #fff; }
+
+  .section { display: none; padding: 16px; padding-bottom: 100px; }
+  .section.active { display: block; }
+
+  .card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 14px; border: 1px solid var(--border); }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .section-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+
+  .journal-textarea { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: 14px; font-family: 'Nunito', sans-serif; color: var(--text); background: var(--bg); resize: none; height: 130px; outline: none; line-height: 1.6; transition: border-color 0.2s; }
+  .journal-textarea:focus { border-color: var(--purple); background: #fff; }
+  .mood-row { display: flex; gap: 8px; margin: 12px 0; }
+  .mood-btn { flex: 1; padding: 8px 2px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); cursor: pointer; font-size: 20px; text-align: center; transition: all 0.15s; }
+  .mood-btn.selected { border-color: var(--purple); background: var(--purple-light); transform: scale(1.1); }
+  .btn-primary { width: 100%; padding: 12px; background: var(--purple); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.15s; }
+  .btn-primary:hover { background: var(--purple-dark); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .entry-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .entry-meta { font-size: 11px; color: var(--text2); margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+  .entry-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+  .del-btn { font-size: 12px; color: var(--red); cursor: pointer; font-weight: 600; }
+
+  .stat-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .stat-box { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; box-shadow: var(--shadow); }
+  .stat-num { font-size: 26px; font-weight: 700; color: var(--purple); }
+  .stat-label { font-size: 11px; color: var(--text2); font-weight: 600; margin-top: 2px; }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .add-row input { flex: 1; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; font-family: 'Nunito', sans-serif; color: var(--text); background: var(--card); outline: none; transition: border-color 0.2s; }
+  .add-row input:focus { border-color: var(--purple); }
+  .add-row select { width: 90px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 6px; font-size: 12px; font-family: 'Nunito', sans-serif; font-weight: 600; color: var(--text); background: var(--card); outline: none; cursor: pointer; }
+  .add-btn { padding: 10px 14px; background: var(--purple); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; white-space: nowrap; }
+
+  .todo-item { display: flex; align-items: center; gap: 10px; padding: 11px 13px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(83,74,183,0.06); transition: opacity 0.2s; }
+  .todo-item.done { opacity: 0.55; }
+  .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--purple-mid); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; font-size: 12px; color: #fff; }
+  .check-circle.checked { background: var(--purple); border-color: var(--purple); }
+  .todo-text { flex: 1; font-size: 14px; color: var(--text); font-weight: 500; }
+  .todo-item.done .todo-text { text-decoration: line-through; color: var(--text2); }
+  .pri-badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; font-weight: 700; }
+  .pri-high { background: #FDECEA; color: #C0392B; }
+  .pri-med  { background: #FEF3CD; color: #9A6500; }
+  .pri-low  { background: #DCFCE7; color: #166534; }
+  .x-btn { color: var(--text2); cursor: pointer; font-size: 18px; line-height: 1; font-weight: 700; padding: 0 2px; }
+  .x-btn:hover { color: var(--red); }
+
+  .notif-bar { background: var(--purple-light); border: 1px solid var(--purple-mid); border-radius: 10px; padding: 11px 14px; font-size: 13px; color: var(--purple-dark); display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-weight: 600; }
+  .notif-btn { margin-left: auto; background: var(--purple); color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; white-space: nowrap; }
+  .form-label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .form-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; font-family: 'Nunito', sans-serif; color: var(--text); background: var(--card); outline: none; margin-bottom: 12px; transition: border-color 0.2s; }
+  .form-input:focus { border-color: var(--purple); }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .reminder-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(83,74,183,0.06); }
+  .rem-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--purple-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .rem-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .rem-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .s-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; box-shadow: var(--shadow); }
+  .s-num { font-size: 32px; font-weight: 700; color: var(--purple); }
+  .s-label { font-size: 12px; color: var(--text2); font-weight: 600; margin-top: 4px; }
+  .week-row { display: flex; gap: 6px; }
+  .day-pill { flex: 1; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--text2); background: var(--bg); border: 1px solid var(--border); }
+  .day-pill.done { background: var(--purple); color: #fff; border-color: var(--purple); }
+  .day-pill.today { border: 2px solid var(--purple); color: var(--purple); }
+
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card); border-top: 1px solid var(--border); display: flex; box-shadow: 0 -4px 20px rgba(83,74,183,0.10); z-index: 20; }
+  .nav-item { flex: 1; padding: 10px 4px 8px; text-align: center; cursor: pointer; color: var(--text2); font-size: 10px; font-weight: 700; transition: color 0.2s; }
+  .nav-item.active { color: var(--purple); }
+  .nav-icon { font-size: 22px; display: block; margin-bottom: 2px; }
+
+  .empty { text-align: center; padding: 28px 16px; color: var(--text2); font-size: 13px; font-weight: 600; line-height: 1.7; }
+  .loading { text-align: center; padding: 20px; color: var(--text2); font-size: 13px; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-logo">✨</div>
+  <div class="auth-title">DailyMe</div>
+  <div class="auth-sub">Günlük asistanın — her cihazda,<br>her zaman seninle.</div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuth('login')">Giriş Yap</button>
+      <button class="auth-tab" onclick="switchAuth('register')">Kayıt Ol</button>
+    </div>
+    <div id="auth-login">
+      <label class="auth-label">E-posta</label>
+      <input class="auth-input" type="email" id="login-email" placeholder="ornek@mail.com"/>
+      <label class="auth-label">Şifre</label>
+      <input class="auth-input" type="password" id="login-password" placeholder="Şifreniz" onkeydown="if(event.key==='Enter')login()"/>
+      <button class="auth-btn" onclick="login()" id="login-btn">Giriş Yap</button>
+    </div>
+    <div id="auth-register" style="display:none;">
+      <label class="auth-label">E-posta</label>
+      <input class="auth-input" type="email" id="reg-email" placeholder="ornek@mail.com"/>
+      <label class="auth-label">Şifre</label>
+      <input class="auth-input" type="password" id="reg-password" placeholder="En az 6 karakter" onkeydown="if(event.key==='Enter')register()"/>
+      <button class="auth-btn" onclick="register()" id="reg-btn">Kayıt Ol</button>
+    </div>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div class="app-screen" id="app-screen">
+  <div class="header">
+    <div class="header-left">
+      <h1>DailyMe ✨</h1>
+      <div class="date" id="header-date"></div>
+    </div>
+    <div class="header-right">
+      <span class="user-badge" id="user-badge"></span>
+      <button class="logout-btn" onclick="logout()">Çıkış</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('gunluk')">📖 Günlük</button>
+    <button class="tab" onclick="switchTab('todo')">✅ To-Do</button>
+    <button class="tab" onclick="switchTab('hatirlatici')">🔔 Hatırlat</button>
+    <button class="tab" onclick="switchTab('ozet')">📊 Özet</button>
+  </div>
+
+  <!-- GÜNLÜK -->
+  <div class="section active" id="sec-gunluk">
+    <div class="section-title">Bugün ne oldu? ✍️</div>
+    <div class="card">
+      <textarea class="journal-textarea" id="journal-input" placeholder="Bugün nasıl geçti? Düşüncelerini özgürce yaz..."></textarea>
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin:10px 0 6px;text-transform:uppercase;letter-spacing:0.3px;">Ruh halin nasıl?</div>
+      <div class="mood-row">
+        <div class="mood-btn" onclick="selectMood(this,'😊')">😊</div>
+        <div class="mood-btn" onclick="selectMood(this,'😐')">😐</div>
+        <div class="mood-btn" onclick="selectMood(this,'😔')">😔</div>
+        <div class="mood-btn" onclick="selectMood(this,'😤')">😤</div>
+        <div class="mood-btn" onclick="selectMood(this,'🥳')">🥳</div>
+      </div>
+      <button class="btn-primary" onclick="saveEntry()" id="save-entry-btn">Kaydet</button>
+    </div>
+    <div class="section-title">Geçmiş Girişler</div>
+    <div id="entries-list"><div class="loading"><span class="spinner"></span>Yükleniyor...</div></div>
+  </div>
+
+  <!-- TO-DO -->
+  <div class="section" id="sec-todo">
+    <div class="stat-row">
+      <div class="stat-box"><div class="stat-num" id="total-count">0</div><div class="stat-label">Toplam</div></div>
+      <div class="stat-box"><div class="stat-num" id="done-count">0</div><div class="stat-label">Tamamlandı</div></div>
+      <div class="stat-box"><div class="stat-num" id="left-count">0</div><div class="stat-label">Kaldı</div></div>
+    </div>
+    <div class="add-row">
+      <input type="text" id="todo-input" placeholder="Yeni görev..." onkeydown="if(event.key==='Enter')addTodo()"/>
+      <select id="todo-pri">
+        <option value="high">🔴 Yüksek</option>
+        <option value="med" selected>🟡 Orta</option>
+        <option value="low">🟢 Düşük</option>
+      </select>
+      <button class="add-btn" onclick="addTodo()">+ Ekle</button>
+    </div>
+    <div id="todo-list"><div class="loading"><span class="spinner"></span>Yükleniyor...</div></div>
+  </div>
+
+  <!-- HATIRLATICI -->
+  <div class="section" id="sec-hatirlatici">
+    <div class="notif-bar" id="notif-bar">
+      <span>🔔 Bildirimleri aktifleştir</span>
+      <button class="notif-btn" onclick="requestNotif()">İzin Ver</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Yeni Hatırlatıcı</div>
+      <label class="form-label">Başlık</label>
+      <input class="form-input" type="text" id="rem-title" placeholder="örn. Su iç, İlaç al..."/>
+      <div class="two-col">
+        <div>
+          <label class="form-label">Saat</label>
+          <input class="form-input" type="time" id="rem-time" value="09:00"/>
+        </div>
+        <div>
+          <label class="form-label">Tekrar</label>
+          <select class="form-input" id="rem-repeat" style="margin-bottom:0;">
+            <option value="once">Bir kez</option>
+            <option value="daily">Her gün</option>
+            <option value="weekday">Hafta içi</option>
+            <option value="weekend">Hafta sonu</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="addReminder()">🔔 Hatırlatıcı Ekle</button>
+    </div>
+    <div class="section-title">Aktif Hatırlatıcılar</div>
+    <div id="reminder-list"><div class="loading"><span class="spinner"></span>Yükleniyor...</div></div>
+  </div>
+
+  <!-- ÖZET -->
+  <div class="section" id="sec-ozet">
+    <div class="summary-grid">
+      <div class="s-card"><div class="s-num" id="s-entries">0</div><div class="s-label">Günlük Girdisi</div></div>
+      <div class="s-card"><div class="s-num" id="s-todos">0</div><div class="s-label">Görev Tamam</div></div>
+      <div class="s-card"><div class="s-num" id="s-reminders">0</div><div class="s-label">Hatırlatıcı</div></div>
+      <div class="s-card"><div class="s-num" id="s-streak">0</div><div class="s-label">Gün Serisi 🔥</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Bu Hafta</div>
+      <div class="week-row" id="week-row"></div>
+    </div>
+    <div class="section-title">Son Ruh Halleri</div>
+    <div id="mood-history"></div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('gunluk')"><span class="nav-icon">📖</span>Günlük</div>
+    <div class="nav-item" onclick="switchTab('todo')"><span class="nav-icon">✅</span>To-Do</div>
+    <div class="nav-item" onclick="switchTab('hatirlatici')"><span class="nav-icon">🔔</span>Hatırlat</div>
+    <div class="nav-item" onclick="switchTab('ozet')"><span class="nav-icon">📊</span>Özet</div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://kialobjucxfccuqeudkx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_5ijd83-H3_2O4b37iVvOVA_s1OZdZ3T';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const DAYS = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+const MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+const REM_ICONS = ['⏰','📌','💊','🏃','💧','📚','🛒','🔔','🎯','🌙'];
+const REPEAT_LABELS = {once:'Bir kez',daily:'Her gün',weekday:'Hafta içi',weekend:'Hafta sonu'};
+const PRI_LABELS = {high:'Yüksek',med:'Orta',low:'Düşük'};
+const PRI_CLASS = {high:'pri-high',med:'pri-med',low:'pri-low'};
+
+let currentUser = null;
+let selectedMood = '';
+let notifGranted = false;
+let entries = [], todos = [], reminders = [];
+
+function dateStr(d) {
+  d = d || new Date();
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${DAYS[d.getDay()]}`;
+}
+function escHtml(t) {
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.getElementById('header-date').textContent = dateStr();
+
+// AUTH
+function switchAuth(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', i===(tab==='login'?0:1)));
+  document.getElementById('auth-login').style.display = tab==='login'?'block':'none';
+  document.getElementById('auth-register').style.display = tab==='register'?'block':'none';
+  document.getElementById('auth-msg').className = 'auth-msg';
+}
+
+function showMsg(msg, type) {
+  const el = document.getElementById('auth-msg');
+  el.textContent = msg;
+  el.className = 'auth-msg ' + type;
+}
+
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if(!email || !password) { showMsg('E-posta ve şifre gerekli!', 'error'); return; }
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Giriş yapılıyor...';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = 'Giriş Yap';
+  if(error) { showMsg('Hata: ' + error.message, 'error'); return; }
+}
+
+async function register() {
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if(!email || !password) { showMsg('E-posta ve şifre gerekli!', 'error'); return; }
+  if(password.length < 6) { showMsg('Şifre en az 6 karakter olmalı!', 'error'); return; }
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = 'Kayıt olunuyor...';
+  const { error } = await sb.auth.signUp({ email, password });
+  btn.disabled = false; btn.textContent = 'Kayıt Ol';
+  if(error) { showMsg('Hata: ' + error.message, 'error'); return; }
+  showMsg('✅ Kayıt başarılı! E-postanı doğrula ve giriş yap.', 'success');
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  entries = []; todos = []; reminders = [];
+  document.getElementById('app-screen').classList.remove('visible');
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if(session?.user) {
+    currentUser = session.user;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').classList.add('visible');
+    document.getElementById('user-badge').textContent = currentUser.email.split('@')[0];
+    await loadAll();
+  }
+});
+
+async function loadAll() {
+  await Promise.all([loadEntries(), loadTodos(), loadReminders()]);
+}
+
+// TABS
+function switchTab(id) {
+  const ids = ['gunluk','todo','hatirlatici','ozet'];
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ids[i]===id));
+  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', ids[i]===id));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  if(id==='ozet') renderSummary();
+}
+
+// MOOD
+function selectMood(el, m) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedMood = m;
+}
+
+// ENTRIES
+async function loadEntries() {
+  const { data } = await sb.from('entries').select('*').eq('user_id', currentUser.id).order('ts', { ascending: false });
+  entries = data || [];
+  renderEntries();
+}
+
+async function saveEntry() {
+  const text = document.getElementById('journal-input').value.trim();
+  if(!text) { alert('Lütfen bir şeyler yaz!'); return; }
+  const btn = document.getElementById('save-entry-btn');
+  btn.disabled = true; btn.textContent = 'Kaydediliyor...';
+  const { error } = await sb.from('entries').insert({
+    user_id: currentUser.id, text, mood: selectedMood, date: dateStr(), ts: Date.now()
+  });
+  btn.disabled = false; btn.textContent = 'Kaydet';
+  if(error) { alert('Hata: ' + error.message); return; }
+  document.getElementById('journal-input').value = '';
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  selectedMood = '';
+  await loadEntries();
+}
+
+async function delEntry(id) {
+  if(!confirm('Bu girişi silmek istiyor musun?')) return;
+  await sb.from('entries').delete().eq('id', id);
+  await loadEntries();
+}
+
+function renderEntries() {
+  const el = document.getElementById('entries-list');
+  if(!entries.length) { el.innerHTML = '<div class="empty">Henüz günlük girişi yok.<br>İlk girişini yap! ✍️</div>'; return; }
+  el.innerHTML = entries.map(e => `
+    <div class="entry-card">
+      <div class="entry-meta">
+        <span>${escHtml(e.mood||'📝')} ${escHtml(e.date)}</span>
+        <span class="del-btn" onclick="delEntry('${e.id}')">Sil</span>
+      </div>
+      <div class="entry-text">${escHtml(e.text.length>150?e.text.slice(0,150)+'...':e.text)}</div>
+    </div>`).join('');
+}
+
+// TODOS
+async function loadTodos() {
+  const { data } = await sb.from('todos').select('*').eq('user_id', currentUser.id).order('ts', { ascending: false });
+  todos = data || [];
+  renderTodos();
+}
+
+async function addTodo() {
+  const val = document.getElementById('todo-input').value.trim();
+  const pri = document.getElementById('todo-pri').value;
+  if(!val) return;
+  await sb.from('todos').insert({ user_id: currentUser.id, text: val, priority: pri, done: false, ts: Date.now() });
+  document.getElementById('todo-input').value = '';
+  await loadTodos();
+}
+
+async function toggleTodo(id, done) {
+  await sb.from('todos').update({ done: !done }).eq('id', id);
+  await loadTodos();
+}
+
+async function delTodo(id) {
+  await sb.from('todos').delete().eq('id', id);
+  await loadTodos();
+}
+
+function renderTodos() {
+  const total = todos.length;
+  const done = todos.filter(t=>t.done).length;
+  document.getElementById('total-count').textContent = total;
+  document.getElementById('done-count').textContent = done;
+  document.getElementById('left-count').textContent = total - done;
+  const el = document.getElementById('todo-list');
+  if(!total) { el.innerHTML = '<div class="empty">Görev listesi boş.<br>Bir şeyler ekle! 🎯</div>'; return; }
+  el.innerHTML = todos.map(t => `
+    <div class="todo-item ${t.done?'done':''}">
+      <div class="check-circle ${t.done?'checked':''}" onclick="toggleTodo('${t.id}',${t.done})">${t.done?'✓':''}</div>
+      <div class="todo-text">${escHtml(t.text)}</div>
+      <span class="pri-badge ${PRI_CLASS[t.priority]||'pri-med'}">${PRI_LABELS[t.priority]||'Orta'}</span>
+      <span class="x-btn" onclick="delTodo('${t.id}')">×</span>
+    </div>`).join('');
+}
+
+// REMINDERS
+async function loadReminders() {
+  const { data } = await sb.from('reminders').select('*').eq('user_id', currentUser.id).order('time');
+  reminders = data || [];
+  renderReminders();
+}
+
+function requestNotif() {
+  if(!('Notification' in window)) { alert('Tarayıcınız bildirim desteklemiyor.'); return; }
+  Notification.requestPermission().then(p => {
+    notifGranted = p === 'granted';
+    const bar = document.getElementById('notif-bar');
+    if(notifGranted) {
+      bar.innerHTML = '<span>✅ Bildirimler aktif!</span>';
+      bar.style.background = '#DCFCE7'; bar.style.borderColor = '#86EFAC'; bar.style.color = '#166534';
+    }
+  });
+}
+
+async function addReminder() {
+  const title = document.getElementById('rem-title').value.trim();
+  const time = document.getElementById('rem-time').value;
+  const repeat = document.getElementById('rem-repeat').value;
+  if(!title || !time) { alert('Başlık ve saat gerekli!'); return; }
+  await sb.from('reminders').insert({ user_id: currentUser.id, title, time, repeat });
+  document.getElementById('rem-title').value = '';
+  scheduleNotif(title, time);
+  await loadReminders();
+}
+
+async function delReminder(id) {
+  await sb.from('reminders').delete().eq('id', id);
+  await loadReminders();
+}
+
+function scheduleNotif(title, time) {
+  if(!notifGranted) return;
+  const [h,m] = time.split(':').map(Number);
+  const now = new Date(), target = new Date();
+  target.setHours(h,m,0,0);
+  if(target <= now) target.setDate(target.getDate()+1);
+  const delay = target - now;
+  if(delay < 86400000) setTimeout(() => { new Notification('DailyMe 🔔', { body: title }); }, delay);
+}
+
+function renderReminders() {
+  const el = document.getElementById('reminder-list');
+  if(!reminders.length) { el.innerHTML = '<div class="empty">Henüz hatırlatıcı yok.<br>Bir tane ekle! 🔔</div>'; return; }
+  el.innerHTML = reminders.map((r,i) => `
+    <div class="reminder-item">
+      <div class="rem-icon">${REM_ICONS[i%REM_ICONS.length]}</div>
+      <div style="flex:1">
+        <div class="rem-title">${escHtml(r.title)}</div>
+        <div class="rem-sub">${r.time} · ${REPEAT_LABELS[r.repeat]||r.repeat}</div>
+      </div>
+      <span class="x-btn" onclick="delReminder('${r.id}')">×</span>
+    </div>`).join('');
+}
+
+function renderSummary() {
+  document.getElementById('s-entries').textContent = entries.length;
+  document.getElementById('s-todos').textContent = todos.filter(t=>t.done).length;
+  document.getElementById('s-reminders').textContent = reminders.length;
+  document.getElementById('s-streak').textContent = Math.min(entries.length, 7);
+  const now = new Date();
+  let html = '';
+  for(let i=6; i>=0; i--) {
+    const d = new Date(now); d.setDate(d.getDate()-i);
+    const done = i < Math.min(entries.length,7);
+    const today = i===0;
+    html += `<div class="day-pill ${done?'done':''}${(!done&&today)?' today':''}">${DAYS[d.getDay()]}</div>`;
+  }
+  document.getElementById('week-row').innerHTML = html;
+  const mEl = document.getElementById('mood-history');
+  const recent = entries.slice(0,5);
+  if(!recent.length) { mEl.innerHTML = '<div class="empty">Henüz ruh hali kaydı yok.</div>'; return; }
+  mEl.innerHTML = recent.map(e => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:24px;">${escHtml(e.mood||'📝')}</span>
+      <div>
+        <div style="font-size:11px;color:var(--text2);font-weight:600;">${escHtml(e.date)}</div>
+        <div style="font-size:13px;color:var(--text);margin-top:2px;">${escHtml(e.text.slice(0,70))}${e.text.length>70?'...':''}</div>
+      </div>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>
